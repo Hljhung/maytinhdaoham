@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công Cụ Tính Đạo Hàm Cấp N & Vẽ Đồ Thị</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f3ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- MathJax for rendering LaTeX -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- Nerdamer for Symbolic Differentiation -->
+    <script src="https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/nerdamer.core.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Algebra.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Calculus.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Extra.js"></script>
+
+    <!-- Plotly.js for Interactive Graphing -->
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .dark .glass-card {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.8);
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen transition-colors duration-300">
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-50 glass-card border-b border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid font-bold text-lg">f'</i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">
+                        Calculus Pro
+                    </h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Đạo hàm ký hiệu cấp n & Đồ thị</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button id="themeToggleBtn" onclick="toggleTheme()" class="p-2.5 rounded-xl bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition">
+                    <i id="themeIcon" class="fa-solid fa-moon"></i>
+                </button>
+                <a href="#presetSection" class="hidden sm:flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 hover:bg-indigo-100 transition">
+                    <i class="fa-solid fa-bookmark"></i> Hàm mẫu
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Top Input & Quick Pad Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left Panel: Form Input & Options -->
+            <div class="lg:col-span-7 space-y-5">
+                <div class="glass-card p-6 rounded-2xl shadow-xl border border-slate-200/60 dark:border-slate-800">
+                    <h2 class="text-base font-semibold mb-4 flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                        <i class="fa-solid fa-sliders"></i> Thông số đầu vào
+                    </h2>
+
+                    <!-- Expression Input -->
+                    <div class="space-y-2 mb-4">
+                        <label for="expressionInput" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                            Nhập hàm số $f(x)$:
+                        </label>
+                        <div class="relative">
+                            <input type="text" id="expressionInput" value="x^3 + sin(x)" placeholder="ví dụ: x^3 - 2*x + exp(x)"
+                                class="w-full px-4 py-3 bg-white/80 dark:bg-slate-900/80 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono text-base pr-10 shadow-inner text-slate-900 dark:text-slate-100" />
+                            <button onclick="clearInput()" title="Xóa" class="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Derivative Order & Domain Inputs -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+                        <div>
+                            <label for="orderInput" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                Cấp đạo hàm ($n$):
+                            </label>
+                            <input type="number" id="orderInput" value="2" min="1" max="10"
+                                class="w-full px-3 py-2.5 bg-white/80 dark:bg-slate-900/80 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-semibold text-center text-slate-900 dark:text-slate-100" />
+                        </div>
+                        <div>
+                            <label for="xMinInput" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                Khoảng $x_{\text{min}}$:
+                            </label>
+                            <input type="number" id="xMinInput" value="-5" step="0.5"
+                                class="w-full px-3 py-2.5 bg-white/80 dark:bg-slate-900/80 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-center text-slate-900 dark:text-slate-100" />
+                        </div>
+                        <div>
+                            <label for="xMaxInput" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                Khoảng $x_{\text{max}}$:
+                            </label>
+                            <input type="number" id="xMaxInput" value="5" step="0.5"
+                                class="w-full px-3 py-2.5 bg-white/80 dark:bg-slate-900/80 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-center text-slate-900 dark:text-slate-100" />
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center gap-3">
+                        <button onclick="calculateAndPlot()" class="flex-1 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-indigo-500/25 active:scale-[0.98] transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-calculator"></i> Tính & Vẽ Đồ Thị
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Right Panel: Math Keypad -->
+            <div class="lg:col-span-5">
+                <div class="glass-card p-6 rounded-2xl shadow-xl border border-slate-200/60 dark:border-slate-800 h-full flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-base font-semibold mb-3 flex items-center justify-between text-indigo-600 dark:text-indigo-400">
+                            <span><i class="fa-solid fa-keyboard"></i> Bàn phím nhanh (Math Keypad)</span>
+                        </h2>
+                        <div class="grid grid-cols-4 sm:grid-cols-5 gap-2" id="keypad">
+                            <!-- Keypad items will be generated dynamically or plain HTML -->
+                            <button onclick="insertSymbol('x')" class="kp-btn">x</button>
+                            <button onclick="insertSymbol('^')" class="kp-btn">x<sup>n</sup></button>
+                            <button onclick="insertSymbol('^2')" class="kp-btn">x²</button>
+                            <button onclick="insertSymbol('+')" class="kp-btn">+</button>
+                            <button onclick="insertSymbol('-')" class="kp-btn">-</button>
+
+                            <button onclick="insertSymbol('*')" class="kp-btn">×</button>
+                            <button onclick="insertSymbol('/')" class="kp-btn">÷</button>
+                            <button onclick="insertSymbol('(')" class="kp-btn">(</button>
+                            <button onclick="insertSymbol(')')" class="kp-btn">)</button>
+                            <button onclick="insertSymbol('sqrt(')" class="kp-btn">√x</button>
+
+                            <button onclick="insertSymbol('sin(')" class="kp-btn">sin</button>
+                            <button onclick="insertSymbol('cos(')" class="kp-btn">cos</button>
+                            <button onclick="insertSymbol('tan(')" class="kp-btn">tan</button>
+                            <button onclick="insertSymbol('exp(')" class="kp-btn">e<sup>x</sup></button>
+
+                            <button onclick="insertSymbol('log(')" class="kp-btn">ln/log</button>
+                            <button onclick="insertSymbol('asin(')" class="kp-btn">arcsin</button>
+                            <button onclick="insertSymbol('acos(')" class="kp-btn">arccos</button>
+                            <button onclick="insertSymbol('atan(')" class="kp-btn">arctan</button>
+                            <button onclick="insertSymbol('pi')" class="kp-btn">π</button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-4 italic">
+                        <i class="fa-solid fa-circle-info mr-1"></i>Mẹo: Nhấp vào nút để chèn hàm hoặc phép toán vào biểu thức.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Preset Examples -->
+        <div id="presetSection" class="glass-card p-5 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-lightbulb text-amber-500"></i> Hàm số mẫu phổ biến
+            </h3>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="loadPreset('x^4 - 3*x^2 + 2', 2)" class="preset-btn">Đa thức: $x^4 - 3x^2 + 2$ ($n=2$)</button>
+                <button onclick="loadPreset('sin(x) * cos(x)', 3)" class="preset-btn">Lượng giác: $\sin(x)\cos(x)$ ($n=3$)</button>
+                <button onclick="loadPreset('exp(-x^2)', 2)" class="preset-btn">Gauss: $e^{-x^2}$ ($n=2$)</button>
+                <button onclick="loadPreset('x * log(x)', 2)" class="preset-btn">Logarithm: $x \ln(x)$ ($n=2$)</button>
+                <button onclick="loadPreset('x / (x^2 + 1)', 2)" class="preset-btn">Phân thức: $\frac{x}{x^2+1}$ ($n=2$)</button>
+            </div>
+        </div>
+
+        <!-- Final Result Card -->
+        <div class="glass-card p-6 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-lg">
+            <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                Kết Quả Đạo Hàm Cấp <span id="resOrderTitle">n</span>
+            </h2>
+            <div class="p-4 bg-indigo-50/50 dark:bg-slate-900/60 rounded-xl border border-indigo-100 dark:border-indigo-950/80 min-h-[70px] flex items-center justify-center overflow-x-auto">
+                <div id="finalMathResult" class="text-lg sm:text-xl font-medium text-indigo-900 dark:text-indigo-200">
+                    $$\text{Đang chờ nhập dữ liệu...}$$
+                </div>
+            </div>
+        </div>
+
+        <!-- Step-by-Step breakdown list -->
+        <div class="glass-card p-6 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-lg">
+            <h2 class="text-base font-semibold mb-4 flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                <i class="fa-solid fa-layer-group"></i> Chi Tiết Các Cấp Đạo Hàm ($1 \to n$)
+            </h2>
+            <div id="stepList" class="space-y-3">
+                <p class="text-slate-400 text-sm italic">Chưa có dữ liệu tính toán.</p>
+            </div>
+        </div>
+
+        <!-- Interactive Graph Display -->
+        <div class="glass-card p-6 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-lg">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
+                <h2 class="text-base font-semibold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                    <i class="fa-solid fa-chart-line"></i> Đồ Thị Trực Quan $f(x)$ & $f^{(n)}(x)$
+                </h2>
+                <div class="flex items-center gap-3 text-xs">
+                    <span class="inline-flex items-center gap-1.5 font-medium text-indigo-500">
+                        <span class="w-3 h-3 rounded-full bg-indigo-500 inline-block"></span> $f(x)$
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 font-medium text-rose-500">
+                        <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span> $f^{(n)}(x)$
+                    </span>
+                </div>
+            </div>
+
+            <!-- Plotly div -->
+            <div id="plotDiv" class="w-full h-[450px] rounded-xl overflow-hidden bg-white/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800/50"></div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-7xl mx-auto px-4 py-8 text-center text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800 mt-12">
+        <p>© 2026 Calculus Pro - Công cụ tính toán đạo hàm ký hiệu chuyên nghiệp.</p>
+    </footer>
+
+    <!-- CSS Helpers for Buttons -->
+    <style>
+        .kp-btn {
+            background-color: rgba(241, 245, 249, 0.8);
+            border: 1px solid rgba(203, 213, 225, 0.8);
+            padding: 8px 4px;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #334155;
+            transition: all 0.15s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .dark .kp-btn {
+            background-color: rgba(30, 41, 59, 0.8);
+            border-color: rgba(51, 65, 85, 0.8);
+            color: #cbd5e1;
+        }
+        .kp-btn:hover {
+            background-color: #6366f1;
+            color: #ffffff;
+            border-color: #6366f1;
+            transform: translateY(-1px);
+        }
+        .preset-btn {
+            background: rgba(243, 244, 246, 0.8);
+            border: 1px solid rgba(229, 231, 235, 1);
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #4b5563;
+            transition: all 0.2s ease;
+        }
+        .dark .preset-btn {
+            background: rgba(31, 41, 55, 0.7);
+            border-color: rgba(55, 65, 81, 0.8);
+            color: #9ca3af;
+        }
+        .preset-btn:hover {
+            border-color: #6366f1;
+            color: #6366f1;
+            background: rgba(238, 242, 255, 0.8);
+        }
+        .dark .preset-btn:hover {
+            color: #818cf8;
+            background: rgba(49, 46, 129, 0.4);
+        }
+    </style>
+
+    <script>
+        // Theme toggle logic
+        function toggleTheme() {
+            const htmlClass = document.documentElement.classList;
+            const themeIcon = document.getElementById('themeIcon');
+            if (htmlClass.contains('dark')) {
+                htmlClass.remove('dark');
+                themeIcon.className = 'fa-solid fa-sun text-amber-500';
+            } else {
+                htmlClass.add('dark');
+                themeIcon.className = 'fa-solid fa-moon';
+            }
+            // Re-render plot to update theme colors
+            calculateAndPlot();
+        }
+
+        // Insert symbol into input cursor position
+        function insertSymbol(sym) {
+            const input = document.getElementById('expressionInput');
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            const text = input.value;
+            input.value = text.substring(0, start) + sym + text.substring(end);
+            input.focus();
+            input.selectionStart = input.selectionEnd = start + sym.length;
+        }
+
+        function clearInput() {
+            document.getElementById('expressionInput').value = '';
+            document.getElementById('expressionInput').focus();
+        }
+
+        function loadPreset(expr, order) {
+            document.getElementById('expressionInput').value = expr;
+            document.getElementById('orderInput').value = order;
+            calculateAndPlot();
+        }
+
+        // Convert expression to LaTeX format using nerdamer
+        function toLaTeX(exprStr) {
+            try {
+                return nerdamer(exprStr).toTeX();
+            } catch (e) {
+                return exprStr;
+            }
+        }
+
+        // Core Calculation & Plotting function
+        function calculateAndPlot() {
+            const rawExpr = document.getElementById('expressionInput').value.trim();
+            const n = parseInt(document.getElementById('orderInput').value) || 1;
+            const xMin = parseFloat(document.getElementById('xMinInput').value) || -5;
+            const xMax = parseFloat(document.getElementById('xMaxInput').value) || 5;
+
+            const resOrderTitle = document.getElementById('resOrderTitle');
+            const finalMathResult = document.getElementById('finalMathResult');
+            const stepList = document.getElementById('stepList');
+
+            if (!rawExpr) {
+                finalMathResult.innerHTML = `<span class="text-rose-500 font-sans text-sm"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Vui lòng nhập biểu thức hàm số.</span>`;
+                return;
+            }
+
+            if (n < 1 || n > 20) {
+                finalMathResult.innerHTML = `<span class="text-rose-500 font-sans text-sm"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Cấp đạo hàm phải từ 1 đến 20.</span>`;
+                return;
+            }
+
+            resOrderTitle.innerText = n;
+            stepList.innerHTML = '';
+
+            try {
+                let currentExpr = rawExpr;
+                let steps = [];
+
+                // Step by step derivative calculation
+                for (let i = 1; i <= n; i++) {
+                    // nerdamer.diff(expression, variable)
+                    const diffResult = nerdamer.diff(currentExpr, 'x');
+                    // Simplify result
+                    const simplified = nerdamer(diffResult.toString()).simplify().toString();
+                    steps.push({
+                        order: i,
+                        expr: simplified,
+                        latex: toLaTeX(simplified)
+                    });
+                    currentExpr = simplified;
+                }
+
+                // Render Final Result
+                const finalStep = steps[steps.length - 1];
+                finalMathResult.innerHTML = `$$f^{(${n})}(x) = ${finalStep.latex}$$`;
+
+                // Render Step List
+                steps.forEach(step => {
+                    const stepDiv = document.createElement('div');
+                    stepDiv.className = 'p-3 bg-white/60 dark:bg-slate-900/40 rounded-xl border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2';
+                    
+                    const orderPrime = step.order <= 3 ? "'".repeat(step.order) : `(${step.order})`;
+
+                    stepDiv.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                                Cấp ${step.order}
+                            </span>
+                            <span class="font-semibold text-slate-700 dark:text-slate-300">
+                                $f${orderPrime}(x)=$
+                            </span>
+                        </div>
+                        <div class="overflow-x-auto text-slate-900 dark:text-slate-100 font-mono text-sm">
+                            $$${step.latex}$$
+                        </div>
+                    `;
+                    stepList.appendChild(stepDiv);
+                });
+
+                // Request MathJax typesetting for new content
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    MathJax.typesetPromise();
+                }
+
+                // Plot Graphs
+                plotFunctions(rawExpr, finalStep.expr, xMin, xMax, n);
+
+            } catch (err) {
+                console.error(err);
+                finalMathResult.innerHTML = `<span class="text-rose-500 font-sans text-sm"><i class="fa-solid fa-circle-exclamation mr-1"></i> Lỗi cú pháp hoặc hàm không xác định: ${err.message}</span>`;
+            }
+        }
+
+        function plotFunctions(fExpr, fnExpr, xMin, xMax, n) {
+            const numPoints = 500;
+            const step = (xMax - xMin) / numPoints;
+
+            const xValues = [];
+            const yValuesF = [];
+            const yValuesFn = [];
+
+            // Compile functions to JS evaluator using nerdamer
+            let compiledF, compiledFn;
+            try {
+                compiledF = nerdamer(fExpr).buildFunction(['x']);
+                compiledFn = nerdamer(fnExpr).buildFunction(['x']);
+            } catch (e) {
+                console.warn('Cannot compile JS function for plotting directly', e);
+                return;
+            }
+
+            for (let i = 0; i <= numPoints; i++) {
+                const x = xMin + i * step;
+                xValues.push(x);
+
+                let yF = null;
+                let yFn = null;
+
+                try {
+                    const valF = compiledF(x);
+                    if (isFinite(valF) && !isNaN(valF)) yF = valF;
+                } catch (e) {}
+
+                try {
+                    const valFn = compiledFn(x);
+                    if (isFinite(valFn) && !isNaN(valFn)) yFn = valFn;
+                } catch (e) {}
+
+                yValuesF.push(yF);
+                yValuesFn.push(yFn);
+            }
+
+            const isDark = document.documentElement.classList.contains('dark');
+
+            const trace1 = {
+                x: xValues,
+                y: yValuesF,
+                mode: 'lines',
+                name: 'f(x)',
+                line: {
+                    color: '#6366f1', // Indigo
+                    width: 2.5
+                }
+            };
+
+            const trace2 = {
+                x: xValues,
+                y: yValuesFn,
+                mode: 'lines',
+                name: `f^(${n})(x)`,
+                line: {
+                    color: '#f43f5e', // Rose
+                    width: 2.5,
+                    dash: 'solid'
+                }
+            };
+
+            const layout = {
+                autosize: true,
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'transparent',
+                margin: { l: 45, r: 25, t: 20, b: 40 },
+                xaxis: {
+                    title: 'x',
+                    color: isDark ? '#94a3b8' : '#64748b',
+                    gridcolor: isDark ? '#1e293b' : '#e2e8f0',
+                    zerolinecolor: isDark ? '#475569' : '#94a3b8',
+                    zerolinewidth: 1.5
+                },
+                yaxis: {
+                    title: 'y',
+                    color: isDark ? '#94a3b8' : '#64748b',
+                    gridcolor: isDark ? '#1e293b' : '#e2e8f0',
+                    zerolinecolor: isDark ? '#475569' : '#94a3b8',
+                    zerolinewidth: 1.5
+                },
+                legend: {
+                    x: 0,
+                    y: 1.1,
+                    orientation: 'h',
+                    font: { color: isDark ? '#cbd5e1' : '#334155' }
+                },
+                hovermode: 'x unified'
+            };
+
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: ['select2d', 'lasso2d']
+            };
+
+            Plotly.newPlot('plotDiv', [trace1, trace2], layout, config);
+        }
+
+        // On Load trigger
+        window.onload = function() {
+            calculateAndPlot();
+        };
+    </script>
+</body>
+</html>
